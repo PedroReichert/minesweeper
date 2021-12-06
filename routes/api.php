@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,8 +15,33 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::group([
+    'middleware' => 'api',
+    'namespace' => 'App\Http\Controllers',
+], function ($router) {
+    Route::group(['prefix' => 'auth'], function(){
+        Route::post('login', 'AuthController@login')->name('login');
+        Route::post('logout', 'AuthController@logout');
+        Route::post('refresh', 'AuthController@refresh');
+        Route::post('me', 'AuthController@me');
+    });
+
+    Route::group(['prefix' => 'game'], function(){
+        Route::post('new', 'GameController@create');
+        Route::post('{id}/choose', 'GameController@choose');
+        Route::get('/list', 'GameController@listGames');
+        Route::get('/load/{id}', 'GameController@loadGame');
+        Route::get('{id}/render', 'GameController@render');
+    });
+    
+    Route::resource('user', 'UserController')->except([
+        'create', 'edit', 'index'
+    ]);
+
 });
 
-Route::post('auth/login', [AuthController::class, 'login'])->name('auth.login');
+Route::get('/unlogged', function(){
+    return Response::json(['error'=>'User not logged'],403);
+})->name('unlogged');
+
+

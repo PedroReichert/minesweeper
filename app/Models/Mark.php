@@ -11,7 +11,14 @@ class Mark extends Model
 
     protected $guarded = [];
 
+    const MINE = 'MINE';
+    const FLAG = 'FLAG';
+    const QUESTION = 'QUESTION';
+    const LABEL = 'LABEL';
+
     public function field(){
-        $this->belongsTo(Field::class);
+        return $this->belongsTo(Field::class);
     }
+
+    
 }

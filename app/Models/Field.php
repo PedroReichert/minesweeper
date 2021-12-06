@@ -12,10 +12,10 @@ class Field extends Model
     protected $guarded = [];
 
     public function marks(){
-        $this->hasMany(Mark::class);
+       return $this->hasMany(Mark::class);
     }
 
     public function user(){
-        $this->belongsTo(User::class);
+       return $this->belongsTo(User::class);
     }
 }
