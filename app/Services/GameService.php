@@ -71,7 +71,11 @@ class GameService{
     }
 
     public function choose($row, $column){
-        if($this->field->marks()->where([['row',$row],['column',$column],['type',Mark::MINE]])->exists()){
+        $markOne = $this->field->marks()->where([['row',$row],['column',$column],['type',Mark::MINE]])->first();
+        if(!is_null($markOne)){
+            $markOne->is_seen = 1;
+            $markOne->save();
+            
             $this->field->is_completed = 1;
             $this->field->save();
             return false;
