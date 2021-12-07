@@ -29,6 +29,7 @@ Route::group([
     Route::group(['prefix' => 'game'], function(){
         Route::post('new', 'GameController@create');
         Route::post('{id}/choose', 'GameController@choose');
+        Route::post('{id}/flag', 'GameController@addFlag');
         Route::get('/list', 'GameController@listGames');
         Route::get('/load/{id}', 'GameController@loadGame');
         Route::get('{id}/render', 'GameController@render');

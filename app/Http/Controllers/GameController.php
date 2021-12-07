@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Resources\GameResource;
 use App\Models\Mark;
 use App\Services\GameService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Response;
 
 class GameController extends Controller
 {
@@ -34,8 +37,12 @@ class GameController extends Controller
     }
 
     public function loadGame($id){
-        $this->gameService->loadGame($id);
-        return new GameResource($this->gameService->field->load('marks'));
+        try{
+            $this->gameService->loadGame($id);
+            return new GameResource($this->gameService->field->load('marks'));
+        }catch(Exception $e){
+            return Response::json(['success'=>false, 'error'=>$e->getMessage()],400);
+        }
     }
 
     public function choose($id, Request $r){
@@ -43,37 +50,71 @@ class GameController extends Controller
             'column' => 'required|integer',
             'row' => 'required|integer'
         ]);
+        try{
+            $this->gameService->loadGame($id);
+            $this->gameService->choose($r->input('row'),$r->input('column'));
+            $message = 'Cell revealed!';
 
-        $this->gameService->loadGame($id);
-        $this->gameService->choose($r->input('row'),$r->input('column'));
-        return new GameResource($this->gameService->field->load('marks'));
+            $status = $this->gameService->checkStatus();
+            if($status === true){
+                $message =  'YOU WON!';
+            }else if($status === false){
+                $message =  'You Lost!';
+            }
+
+            return Response::json(['success'=>true, 'data'=>$message]);
+        }catch(Exception $e){
+            Log::error('ChooseError', ['error'=>$e, 'request'=>$r->all()]);
+            return Response::json(['success'=>false, 'error'=>$e->getMessage()],400);
+        }
+    }
+
+    public function addFlag($id, Request $r){
+        $r->validate([
+            'column' => 'required|integer',
+            'row' => 'required|integer',
+            'type'=> 'required|in:'.implode(',',[Mark::FLAG, Mark::QUESTION])
+        ]);
+        try{
+            $this->gameService->loadGame($id);
+            $this->gameService->addFlag($r->input('row'),$r->input('column'), $r->input('type'));
+
+            return Response::json(['success'=>true, 'data'=>'Cell flaged as '.$r->input('type')]);
+        }catch(Exception $e){
+            Log::error('FlagError', ['error'=>$e, 'request'=>$r->all()]);
+            return Response::json(['success'=>false, 'error'=>$e->getMessage()],400);
+        }
 
     }
 
     public function render($id){
-        $this->gameService->loadGame($id);
-        $field = $this->gameService->field;
-        echo "<table border='1'>";
-        for ($r = 1; $r <= $field->row; $r++) {
-            echo "<tr>";
-            for ($c = 1; $c <= $field->columns; $c++) {
-                echo '<td>';
-                    $mark = $field->marks()->where([['column',$c],['row',$r]])->first();
-                    if($mark->is_seen){
-                        if($mark->type == 'MINE'){
-                            echo 'B';
+        try{
+            $this->gameService->loadGame($id);
+            $field = $this->gameService->field;
+            echo "<table border='1'>";
+            for ($r = 1; $r <= $field->row; $r++) {
+                echo "<tr>";
+                for ($c = 1; $c <= $field->columns; $c++) {
+                    echo '<td>';
+                        $mark = $field->marks()->where([['column',$c],['row',$r]])->first();
+                        if($mark->is_seen){
+                            if($mark->type == 'MINE'){
+                                echo 'B';
+                            }else{
+                                echo $mark->label;
+                            }
                         }else{
-                            echo $mark->label;
+                            echo '*';
                         }
-                    }else{
-                        echo '*';
-                    }
-
-                echo '</td>';
+    
+                    echo '</td>';
+                }
+                echo "</tr>";
             }
-            echo "</tr>";
+            echo "</table>";
+        }catch(Exception $e){
+            return Response::json(['success'=>false, 'error'=>$e->getMessage()],400);
         }
-        echo "</table>";
     }
 
     

@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Field;
 use App\Models\Mark;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\ExecutableFinder;
 
 class GameService{
 
@@ -21,18 +23,25 @@ class GameService{
         return $this->user->fields()->with('marks')->get();
     }
 
-    public function addMark($row, $column, $type){
+    public function addFlag($row, $column, $type){
         if(!$this->isOutOfBound($row,$column)){
             $mark = $this->field->marks()->where([['column',$column],['row',$row]])->first();
             if(!$mark->is_seen){
-                $mark->type = $type;
+                $mark->flag = $type;
                 $mark->save();
+                return true;
+            }else{
+                throw new Exception("Cell is already revealed!");
             }
         }
+        throw new Exception("Cell is out of boundaries!");
     }
 
     public function loadGame($id){
         $this->field = $this->user->fields()->find($id);
+        if(is_null($this->field)){
+            throw new Exception("Game does not exists or does not belongs to the logged user");
+        }
     }
 
     public function newGame($columns, $rows, $minesCount){
@@ -71,31 +80,30 @@ class GameService{
     }
 
     public function choose($row, $column){
-        $markOne = $this->field->marks()->where([['row',$row],['column',$column],['type',Mark::MINE]])->first();
-        if(!is_null($markOne)){
-            $markOne->is_seen = 1;
-            $markOne->save();
-            
-            $this->field->is_completed = 1;
-            $this->field->save();
-            return false;
+        if($this->isOutOfBound($row, $column)){
+            throw new Exception('Choosed cell is out of boundaries!');
         }
+
+        $markOne = $this->field->marks()->where([['row',$row],['column',$column]])->first();
+    
+        if(!is_null($markOne->flag)){
+            throw new Exception('Can not choose a FLAGED cell');
+        }
+        
+        $markOne->is_seen = 1;
+        $markOne->save();
 
         $marks = $this->radar($row,$column, [Mark::LABEL]);
         foreach($marks as $mark){
-            if(!is_null($mark->label) and !$mark->is_seen){
+            if(!is_null($mark->label) and !$mark->is_seen and is_null($mark->flag)){
                 $mark->is_seen = 1;
                 $mark->save();
                 if($mark->label == 0){
                     array_merge($marks,$this->choose($mark->row, $mark->column));
+                }else{
+                    return $marks;
                 }
             }
-        }
-
-        if($this->field->marks()->where('is_seen',1)->count() == ($this->field->row * $this->field->columns - $this->field->marks()->where('type',Mark::MINE)->count())){
-            $this->field->is_completed = 1;
-            $this->field->is_won = 1;
-            $this->field->save();
         }
 
         return $marks;        
@@ -148,5 +156,21 @@ class GameService{
         return false;
     }
     
+    public function checkStatus(){
+        if($this->field->marks()->where([['type',Mark::MINE],['is_seen',1]])->exists()){
+            $this->field->is_completed = 1;
+            $this->field->save();
+            return false;
+        }
+
+        if($this->field->marks()->where('is_seen',1)->count() == ($this->field->row * $this->field->columns - $this->field->marks()->where('type',Mark::MINE)->count())){
+            $this->field->is_completed = 1;
+            $this->field->is_won = 1;
+            $this->field->save();
+            return true;
+        }
+
+        return null;
+    }
 
 }
