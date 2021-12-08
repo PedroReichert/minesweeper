@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GameWebController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,5 +16,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('login');
 });
+
+Route::post('/auth', [AuthController::class, 'loginWeb'])->name('auth');
+Route::get('/list', [GameWebController::class, 'listGames'])->name('listGames');
+Route::get('/play/{id}', [GameWebController::class, 'loadGame'])->name('loadGame');
+Route::get('/play/{id}/choose', [GameWebController::class, 'choose']);
+Route::post('new', [GameWebController::class, 'create'])->name('new');
+Route::get('/newgame',  function () {return view('newGame');});

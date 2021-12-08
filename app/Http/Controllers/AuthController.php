@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Session;
 
 class AuthController extends Controller
 {
@@ -14,7 +15,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login']]);
+        $this->middleware('auth:api', ['except' => ['login', 'loginWeb']]);
     }
 
     /**
@@ -79,5 +80,18 @@ class AuthController extends Controller
             'token_type' => 'bearer',
             'expires_in' => auth()->factory()->getTTL() * 60
         ]);
+    }
+
+
+    public function loginWeb()
+    {
+        $credentials = request(['email', 'password']);
+
+        if (! $token = auth('web')->attempt($credentials)) {
+            return redirect()->back()->withErrors(['msg' => 'Unauthorized']);
+        }
+        
+        Session::put('jwt', $token);
+        return redirect('list')->with('jwt',$token);
     }
 }

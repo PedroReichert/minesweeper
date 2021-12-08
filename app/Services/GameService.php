@@ -80,6 +80,10 @@ class GameService{
     }
 
     public function choose($row, $column){
+        if($this->field->is_completed){
+            throw new Exception('Game is over!');
+        }
+
         if($this->isOutOfBound($row, $column)){
             throw new Exception('Choosed cell is out of boundaries!');
         }
@@ -95,7 +99,7 @@ class GameService{
 
         $marks = $this->radar($row,$column, [Mark::LABEL]);
         foreach($marks as $mark){
-            if(!is_null($mark->label) and !$mark->is_seen and is_null($mark->flag)){
+            if(!is_null($mark->label) and !$mark->is_seen and is_null($mark->flag) and $mark->type != Mark::MINE){
                 $mark->is_seen = 1;
                 $mark->save();
                 if($mark->label == 0){
